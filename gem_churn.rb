@@ -6,7 +6,6 @@ module SimpleGet
   def get(url:)
     conn = Faraday.new(:url => url) do |faraday|
       faraday.request  :url_encoded
-      # faraday.response :logger
       faraday.adapter  Faraday.default_adapter
 
       faraday.request :json
@@ -23,32 +22,29 @@ class GemChurn
 
   def initialize(name)
     @name     = name
-    @versions = self.get(url: "#{URL}/#{@name}.json")
+    @versions = self.get(url: "#{URL}/#{@name}.json").select { |v| v["downloads_count"] > 1000 }
   end
 
   def stats
-    puts
-    puts "#{@name} has #{@versions.count} versions"
-    puts
+    puts "\n#{@name} has #{@versions.count} versions\n"
     puts "The 10 most recent:"
-    @versions.take(10).each do |version|
-      data = [version["number"], version["built_at"], version["downloads_count"]]
+    top_10 = @versions.take(10)
+    top_10.each do |version|
+      date = Date.parse(version["built_at"])
+      data = [version["number"], date.to_s, version["downloads_count"]]
       puts data.join(', ')
     end
-    puts
-    nil
   end
 end
 
 __END__
 
-rails
-minitest
-rspec
-faraday
-
-GemChurn.new('rails').stats
-GemChurn.new('minitest').stats
-GemChurn.new('rspec').stats
-GemChurn.new('faraday').stats
-GemChurn.new('pg').stats
+gems = %w(
+  rails
+  minitest
+  rspec
+  faraday
+  pg
+  factory_girl
+)
+gems.each { |gem| GemChurn.new(gem).stats }
